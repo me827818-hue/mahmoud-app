@@ -74,6 +74,12 @@ input[type=month],input[type=date]{font:inherit;padding:6px 10px;border:1px soli
 .nq.m .ntitle{color:var(--tM)}.nq.n .ntitle{color:var(--tN)}
 .nq .nsub b{color:var(--ink)}
 .nsub{margin-top:10px}
+.nres{border-radius:14px;padding:10px;border-inline-start:6px solid var(--tM);background:var(--bgM);color:var(--ink)}
+.nres.n{border-inline-start-color:var(--tN);background:var(--bgN)}
+.nres.m .nrh b{color:var(--tM)}.nres.n .nrh b{color:var(--tN)}
+.nrh{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+.nrh span{font-size:.85rem;opacity:.85}
+.nt td.rt{padding:0 10px;white-space:nowrap}
 .nsub .eh{align-items:center}
 .nwrap{overflow:auto;max-height:52vh;background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-top:8px}
 .nt th{position:sticky;top:0;background:var(--head);z-index:2;font-size:.85rem;padding:0 8px;min-width:48px}
@@ -217,6 +223,10 @@ h3{font-size:1rem;margin:14px 0 6px}
     </div>
     <div class="acts"><button class="mini" id="svAdd" type="button">− صرف من الحصالة</button><button class="mini" id="svTog" type="button">عرض اللي اتصرف منها</button></div>
     <div id="svList" class="hidden"></div></div>
+
+<div class="card" style="margin-top:12px"><div class="lbl">🔍 البحث في النقوط (محمود وندى)</div>
+  <div class="acts" style="flex-wrap:nowrap"><input class="fld" id="naqQ" type="search" placeholder="اكتب الاسم اللي بتدور عليه…" autocomplete="off"><button class="mini" id="naqQc" type="button">مسح</button></div>
+  <div id="naqRes" class="nbox"></div></div>
 
 <div class="nbox" id="naqBox"></div>
 
@@ -542,17 +552,17 @@ function naqSort(rows){
 }
 function naqTable(p,t){
   var rows=naqRows(p,t);naqSort(rows);
-  var h='<thead><tr><th>مسلسل</th><th>التاريخ</th><th>الاسم</th><th>المبلغ</th><th>المناسبة</th><th></th></tr></thead><tbody>';
+  var h='<thead><tr><th>مسلسل</th><th>الاسم</th><th>المبلغ</th><th>المناسبة</th><th>ملحوظة</th><th></th></tr></thead><tbody>';
   rows.forEach(function(r,i){
     h+='<tr data-id="'+r.id+'"><td class="sn">'+(i+1)+'</td>'+
-    '<td><input type="date" data-f="date" value="'+esc(r.date||"")+'" aria-label="التاريخ"></td>'+
     '<td><input class="nl" data-f="name" value="'+esc(r.name||"")+'" placeholder="الاسم" aria-label="الاسم"></td>'+
     '<td><input data-f="amt" inputmode="decimal" value="'+(r.amt||"")+'" placeholder="0" aria-label="المبلغ"></td>'+
     '<td><input class="nl" data-f="occ" value="'+esc(r.occ||"")+'" placeholder="المناسبة" aria-label="المناسبة"></td>'+
+    '<td><input class="nl" data-f="note" value="'+esc(r.note||"")+'" placeholder="ملحوظة" aria-label="ملحوظة"></td>'+
     '<td><button type="button" class="del" data-del="1" aria-label="حذف الصف">×</button></td></tr>';
   });
   if(!rows.length)h+='<tr><td colspan="6" class="empty">لا توجد صفوف بعد، اضغط «+ إضافة صف».</td></tr>';
-  return h+'</tbody><tfoot><tr><td colspan="3" class="tl">إجمالي المبلغ</td><td data-tot="1">'+fmt(sumA(rows))+'</td><td colspan="2"></td></tr></tfoot>';
+  return h+'</tbody><tfoot><tr><td colspan="2" class="tl">إجمالي المبلغ</td><td data-tot="1">'+fmt(sumA(rows))+'</td><td colspan="3"></td></tr></tfoot>';
 }
 function renderNaq(focusId,field){
   var h="";
@@ -568,6 +578,7 @@ function renderNaq(focusId,field){
     h+='</div>';
   });
   $("naqBox").innerHTML=h;
+  renderRes();
   if(focusId){var r=document.querySelector('#naqBox tr[data-id="'+focusId+'"] input[data-f="'+(field||"name")+'"]');if(r){r.scrollIntoView({block:"nearest"});r.focus()}}
 }
 function naqCtx(el){
@@ -581,16 +592,16 @@ $("naqBox").addEventListener("input",function(e){
   var f=el.dataset.f;
   if(f==="amt"){r.amt=parse(el.value);var rows=naqRows(x.p,x.t),t=fmt(sumA(rows));x.sub.querySelector("[data-tot]").textContent=t;x.sub.querySelector("[data-sum]").textContent="الإجمالي: "+t}
   else r[f]=el.value;
-  save();
+  save();renderRes();
 });
 $("naqBox").addEventListener("change",function(e){var el=e.target;if(!el.dataset)return;if(el.dataset.f==="amt"){var v=parse(el.value);el.value=v||""}
-  else if(el.dataset.f==="date"){var x=naqCtx(el),tr=el.closest("tr");if(!x||!tr)return;save();renderNaq(tr.dataset.id,"date")}});
+});
 $("naqBox").addEventListener("click",function(e){
   var b=e.target.closest("button");if(!b)return;
   var x=naqCtx(b);if(!x)return;
   if(b.dataset.tt){var k=x.p+x.t;nopen[k]=!nopen[k];renderNaq();return}
   if(b.dataset.addrow){
-    var id=uid();naqRows(x.p,x.t).push({id:id,date:dk(new Date()),name:"",amt:0,occ:""});
+    var id=uid();naqRows(x.p,x.t).push({id:id,date:dk(new Date()),name:"",amt:0,occ:"",note:""});
     save();renderNaq(id);return;
   }
   if(b.dataset.del){
@@ -598,6 +609,29 @@ $("naqBox").addEventListener("click",function(e){
     ask("حذف هذا الصف؟",function(){var a=naq()[x.p];a[x.t]=a[x.t].filter(function(y){return String(y.id)!==id2});save();renderNaq()});
   }
 });
+
+/* ---- البحث بالاسم في النقوط ---- */
+function nz(t){return String(t||"").toLowerCase().replace(/[\u064B-\u0652\u0640]/g,"").replace(/[أإآٱ]/g,"ا").replace(/ى/g,"ي").replace(/ة/g,"ه").replace(/\s+/g," ").trim()}
+function renderRes(){
+  var box=$("naqRes"),q=nz($("naqQ").value);
+  if(!q){box.innerHTML="";return}
+  var h="";
+  NP.forEach(function(p){
+    NT.forEach(function(t){
+      var rows=naqRows(p[0],t[0]).filter(function(r){return nz(r.name).indexOf(q)>=0});
+      h+='<div class="nres '+(p[0]==="mahmoud"?"m":"n")+'"><div class="nrh"><b>'+p[1]+' — '+t[1]+'</b><span>'+rows.length+' نتيجة · الإجمالي: '+fmt(sumA(rows))+'</span></div>';
+      if(rows.length){
+        h+='<div class="nwrap"><table class="nt"><thead><tr><th>الاسم</th><th>المبلغ</th><th>المناسبة</th><th>ملحوظة</th></tr></thead><tbody>';
+        rows.forEach(function(r){h+='<tr><td class="rt">'+esc(r.name||"")+'</td><td class="rt">'+(r.amt||0)+'</td><td class="rt">'+esc(r.occ||"")+'</td><td class="rt">'+esc(r.note||"")+'</td></tr>'});
+        h+='</tbody></table></div>';
+      }else h+='<div class="lbl">لا يوجد اسم مطابق</div>';
+      h+='</div>';
+    });
+  });
+  box.innerHTML=h;
+}
+$("naqQ").addEventListener("input",renderRes);
+$("naqQc").addEventListener("click",function(){$("naqQ").value="";renderRes();$("naqQ").focus()});
 
 /* ---- تأكيد داخل الصفحة ---- */
 var pend=null;
